@@ -1,0 +1,90 @@
+name: WFUSB Function Data Update
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.wfusb-function-data-trigger.txt'
+      - '.github/workflows/wfusb-function-data-update.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-function-data:
+    if: ${{ !contains(github.event.head_commit.message, '[skip function data]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install parser
+        run: python -m pip install beautifulsoup4
+      - name: Update MSM function tables
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from bs4 import BeautifulSoup
+          import re, subprocess
+          program='MSM'
+          year_span='2019–2025'
+          grand=294
+          overview_desc='Functional areas of the jobs MSM graduates accepted (2019–2025), using the updated FDS Historical function extract. Use this data to see where prior MSM students have landed and to generate questions about fit; the largest categories are starting points for exploration, not limits on your search.'
+          trends_desc='Year-by-year breakdown of the functions MSM graduates were hired into, updated with the attached FDS Historical function extract. 294 graduate outcomes total for 2019–2025.'
+          insights='''<div class="insight-row"><div class="insight-card"><span class="insight-num">21.8%</span><span class="insight-label">Marketing / Sales<br/><small style="color:var(--text-muted)">64 students · #1 function</small></span></div><div class="insight-card"><span class="insight-num">19.4%</span><span class="insight-label">Consulting<br/><small style="color:var(--text-muted)">57 students · #2 function</small></span></div><div class="insight-card"><span class="insight-num">15.6%</span><span class="insight-label">Finance<br/><small style="color:var(--text-muted)">46 students · #3 function</small></span></div><div class="insight-card"><span class="insight-num">56.8%</span><span class="insight-label">Top 3 functions combined<br/><small style="color:var(--text-muted)">167 of 294 outcomes</small></span></div></div>'''
+          overview_table='''<table class="skills-table"><thead><tr><th>Rank</th><th>Function</th><th>Count</th><th>% of total</th><th>Student search implication</th></tr></thead><tbody><tr><td>1</td><td><strong>Marketing / Sales</strong></td><td>64</td><td>21.8%</td><td style="color:#6B5520;">Largest function signal in the updated FDS extract; prioritize related job titles, employers, alumni, and skill evidence.</td></tr><tr><td>2</td><td><strong>Consulting</strong></td><td>57</td><td>19.4%</td><td style="color:#1D4ED8;">Major recurring function; use this as a high-priority search lane while comparing fit with adjacent pathways.</td></tr><tr><td>3</td><td><strong>Finance</strong></td><td>46</td><td>15.6%</td><td style="color:#166534;">Major recurring function; use this as a high-priority search lane while comparing fit with adjacent pathways.</td></tr><tr><td>—</td><td>Other / Unclassified</td><td>58</td><td>19.7%</td><td style="color:var(--text-muted);">Residual or uncoded function records; use employer, job-title, and coaching evidence to interpret these outcomes.</td></tr><tr><td>4</td><td>Human Resources</td><td>17</td><td>5.8%</td><td style="color:#B45309;">Meaningful secondary pathway; validate current openings and build role-specific evidence before narrowing.</td></tr><tr><td>5</td><td>Operations / Supply Chain</td><td>11</td><td>3.7%</td><td style="color:#7C3AED;">Meaningful secondary pathway; validate current openings and build role-specific evidence before narrowing.</td></tr><tr><td>6</td><td>Analytics / Data Analytics</td><td>10</td><td>3.4%</td><td style="color:#0891B2;">Meaningful secondary pathway; validate current openings and build role-specific evidence before narrowing.</td></tr><tr><td>7</td><td>General Management</td><td>10</td><td>3.4%</td><td style="color:#6B5520;">Meaningful secondary pathway; validate current openings and build role-specific evidence before narrowing.</td></tr><tr><td>8</td><td>Education</td><td>8</td><td>2.7%</td><td style="color:#1D4ED8;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr><tr><td>9</td><td>Information Technology</td><td>5</td><td>1.7%</td><td style="color:#166534;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr><tr><td>10</td><td>Advertising/Public Relations</td><td>4</td><td>1.4%</td><td style="color:#B45309;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr><tr><td>11</td><td>Accounting</td><td>2</td><td>0.7%</td><td style="color:#7C3AED;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr><tr><td>12</td><td>Athlete</td><td>1</td><td>0.3%</td><td style="color:#0891B2;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr><tr><td>13</td><td>Entrepreneur/Founder</td><td>1</td><td>0.3%</td><td style="color:#6B5520;">Lower-volume but legitimate pathway; use targeted employer research and a clear story if pursuing this direction.</td></tr></tbody></table>'''
+          trend_table='''<table class="skills-table"><thead><tr><th>Function</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th><th>Total</th></tr></thead><tbody><tr><td>Marketing / Sales</td><td>21</td><td>12</td><td>8</td><td>11</td><td>5</td><td>5</td><td>2</td><td><strong>64</strong></td></tr><tr><td>Consulting</td><td>9</td><td>5</td><td>8</td><td>13</td><td>7</td><td>10</td><td>5</td><td><strong>57</strong></td></tr><tr><td>Finance</td><td>7</td><td>2</td><td>3</td><td>6</td><td>7</td><td>14</td><td>7</td><td><strong>46</strong></td></tr><tr><td style="color:var(--text-muted)">Other / Unclassified</td><td style="color:var(--text-muted)">12</td><td style="color:var(--text-muted)">8</td><td style="color:var(--text-muted)">10</td><td style="color:var(--text-muted)">5</td><td style="color:var(--text-muted)">6</td><td style="color:var(--text-muted)">6</td><td style="color:var(--text-muted)">11</td><td style="color:var(--text-muted)"><strong>58</strong></td></tr><tr><td>Human Resources</td><td>5</td><td>2</td><td>0</td><td>1</td><td>3</td><td>4</td><td>2</td><td><strong>17</strong></td></tr><tr><td>Operations / Supply Chain</td><td>2</td><td>1</td><td>2</td><td>2</td><td>1</td><td>2</td><td>1</td><td><strong>11</strong></td></tr><tr><td>Analytics / Data Analytics</td><td>3</td><td>0</td><td>1</td><td>2</td><td>1</td><td>1</td><td>2</td><td><strong>10</strong></td></tr><tr><td>General Management</td><td>3</td><td>2</td><td>1</td><td>1</td><td>1</td><td>2</td><td>0</td><td><strong>10</strong></td></tr><tr><td>Education</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td><td>4</td><td><strong>8</strong></td></tr><tr><td>Information Technology</td><td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td><strong>5</strong></td></tr><tr><td>Advertising/Public Relations</td><td>1</td><td>0</td><td>2</td><td>1</td><td>0</td><td>0</td><td>0</td><td><strong>4</strong></td></tr><tr><td>Accounting</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td><strong>2</strong></td></tr><tr><td>Athlete</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td><strong>1</strong></td></tr><tr><td>Entrepreneur/Founder</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td><strong>1</strong></td></tr><tr style="background:var(--gray-100);"><td><strong>Total</strong></td><td><strong>64</strong></td><td><strong>34</strong></td><td><strong>36</strong></td><td><strong>44</strong></td><td><strong>33</strong></td><td><strong>48</strong></td><td><strong>35</strong></td><td><strong>294</strong></td></tr></tbody></table>'''
+          def get_good_html():
+              p=Path('index.html')
+              html=p.read_text(encoding='utf-8') if p.exists() else ''
+              if html.strip() and html.strip()!='PLACEHOLDER':
+                  return html
+              for commit in subprocess.check_output(['git','rev-list','HEAD'], text=True).splitlines()[1:]:
+                  try:
+                      candidate=subprocess.check_output(['git','show',f'{commit}:index.html'], text=True, stderr=subprocess.DEVNULL)
+                  except Exception:
+                      continue
+                  if candidate.strip() and candidate.strip()!='PLACEHOLDER':
+                      return candidate
+              raise SystemExit('No usable index.html found in history')
+          html=get_good_html()
+          soup=BeautifulSoup(html,'html.parser')
+          overview=soup.find(id='overview')
+          section=overview.find('div', class_='section') if overview else None
+          if section:
+              d=section.find(class_='section-desc')
+              if d: d.clear(); d.append(overview_desc)
+              old=section.find('div', class_='insight-row')
+              if old: old.replace_with(BeautifulSoup(insights,'html.parser'))
+              t=section.find('table', class_='skills-table')
+              if t: t.replace_with(BeautifulSoup(overview_table,'html.parser'))
+          trends=soup.find(id='trends')
+          if trends:
+              d=trends.find(class_='section-desc')
+              if d: d.clear(); d.append(trends_desc)
+              title=trends.find('div', class_='trend-chart-title')
+              if title and 'Annual Trend' in title.get_text(): title.string='MSM Placements by Function — Annual Trend'
+              sub=trends.find('div', class_='trend-chart-sub')
+              if sub: sub.string='Updated FDS function counts · 2019–2025 cohorts'
+              for table in trends.find_all('table', class_='skills-table'):
+                  headers=[th.get_text(strip=True) for th in table.find_all('th')]
+                  if headers and headers[0].lower()=='function' and '2019' in headers:
+                      table.replace_with(BeautifulSoup(trend_table,'html.parser'))
+                      break
+          Path('index.html').write_text(str(soup), encoding='utf-8')
+          PY
+      - name: Commit updated index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No function data updates needed."
+          else
+            git commit -m "Update function outcome tables [skip function data]"
+            git push
+          fi
