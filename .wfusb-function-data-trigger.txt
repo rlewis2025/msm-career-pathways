@@ -1,0 +1,1 @@
+Trigger WFUSB function data update for MSM Career Pathways index.
