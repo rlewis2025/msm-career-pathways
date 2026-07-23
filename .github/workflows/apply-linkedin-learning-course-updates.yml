@@ -1,0 +1,47 @@
+name: Apply LinkedIn Learning course updates
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  issues: write
+jobs:
+  update-index:
+    if: github.event.issue.title == 'Run LinkedIn Learning course update'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Add Excel readiness course
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); t=p.read_text(encoding='utf-8'); u='https://www.linkedin.com/learning/excel-essential-training-microsoft-365-2025'
+          if u not in t:
+              a='<div class="ll-kicker">Shared professional core</div>'; x=t.find(a)
+              if x<0: raise SystemExit('Shared professional core anchor not found')
+              i=t.rfind('  <div class="ll-subsection">',0,x)
+              if i<0: raise SystemExit('Shared professional core subsection start not found')
+              s='''  <div class="ll-subsection">
+    <div class="ll-subhead"><div class="ll-kicker">Excel readiness on-ramp</div><h3>Need an Excel refresher?</h3><p>If you are not yet comfortable organizing data, writing formulas, using tables, sorting and filtering information, and creating basic charts, begin with the course below before starting your program-specific cluster.</p></div>
+    <div class="ll-addons"><article class="ll-addon"><strong>Foundational Excel</strong><div class="ll-course-list"><a href="https://www.linkedin.com/learning/excel-essential-training-microsoft-365-2025" target="_blank" rel="noopener"><span>Excel Essential Training (Microsoft 365) (2025)</span><i class="ti ti-external-link" aria-hidden="true"></i></a></div></article></div>
+  </div>
+
+'''
+              p.write_text(t[:i]+s+t[i:],encoding='utf-8')
+          PY
+      - name: Commit update and remove temporary workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/apply-linkedin-learning-course-updates.yml
+          git commit -m "Add LinkedIn Learning Excel readiness course"
+          gh issue close "${{ github.event.issue.number }}" --comment "The LinkedIn Learning course update was applied."
+          git push origin main
